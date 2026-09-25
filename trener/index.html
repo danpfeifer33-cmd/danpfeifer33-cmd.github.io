@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trenér</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trenér">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f2f5f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1513" media="(prefers-color-scheme: dark)">
+<meta name="referrer" content="no-referrer">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --ground: #f2f5f4;
+  --surface: #ffffff;
+  --sunk: #e6ecea;
+  --ink: #14201c;
+  --muted: #5a6964;
+  --line: #d3dcd9;
+  --accent: #1d5e86;
+  --accent-soft: #dbe8f1;
+  --good: #23804f;
+  --good-soft: #dcefe4;
+  --warn: #b27a06;
+  --warn-soft: #f6ebcf;
+  --bad: #bf3a30;
+  --bad-soft: #f6dcd9;
+  --z-low: #6aa58a;
+  --z-mid: #d1a33a;
+  --z-high: #c8574c;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #0e1513; --surface: #16201d; --sunk: #1d2926; --ink: #e4ebe8; --muted: #93a39e;
+    --line: #2a3834; --accent: #6fb0d8; --accent-soft: #1b3240;
+    --good: #5cc28b; --good-soft: #173526; --warn: #e2b04a; --warn-soft: #3a2f14;
+    --bad: #ef7d72; --bad-soft: #3d1c19; --z-low: #5f9e82; --z-mid: #c89c3a; --z-high: #d0675c;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #0e1513; --surface: #16201d; --sunk: #1d2926; --ink: #e4ebe8; --muted: #93a39e;
+  --line: #2a3834; --accent: #6fb0d8; --accent-soft: #1b3240;
+  --good: #5cc28b; --good-soft: #173526; --warn: #e2b04a; --warn-soft: #3a2f14;
+  --bad: #ef7d72; --bad-soft: #3d1c19; --z-low: #5f9e82; --z-mid: #c89c3a; --z-high: #d0675c;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--ground); color: var(--ink);
+  font: 400 16px/1.45 var(--font-body);
+  padding: env(safe-area-inset-top, 0px) 16px calc(env(safe-area-inset-bottom, 0px) + 32px);
+}
+main { max-width: 560px; margin: 0 auto; display: grid; gap: 14px; }
+.stack { display: grid; gap: 14px; }
+h1, h2, .num { font-family: var(--font-display); }
+h2 { font-size: 13px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.num { font-variant-numeric: tabular-nums; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 14px; }
+.top > div:first-child { min-width: 0; flex: 1 1 200px; }
+.top h1 { margin: 0; font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: .01em; }
+.top .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.iconbtn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; height: 38px; min-width: 38px; padding: 0 10px; font-size: 14px; }
+.tools { display: flex; gap: 8px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; }
+.row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+
+/* připravenost */
+.ready { border-radius: 16px; padding: 18px 16px; display: grid; gap: 10px; border: 1px solid transparent; }
+.ready[data-s="GREEN"] { background: var(--good-soft); border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+.ready[data-s="AMBER"] { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.ready[data-s="RED"] { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 35%, transparent); }
+.ready .status { font-family: var(--font-display); font-size: 44px; font-weight: 700; line-height: .95; letter-spacing: .02em; }
+.ready[data-s="GREEN"] .status { color: var(--good); }
+.ready[data-s="AMBER"] .status { color: var(--warn); }
+.ready[data-s="RED"] .status { color: var(--bad); }
+.ready .allowed { font-weight: 600; }
+.ready ul { margin: 0; padding-left: 18px; }
+.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.metric { display: grid; gap: 2px; }
+.metric .v { font-family: var(--font-display); font-size: 24px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.metric .l { font-size: 12px; color: var(--muted); }
+
+/* dnešek */
+.today-w { display: grid; gap: 6px; padding-top: 4px; }
+.today-w + .today-w { border-top: 1px solid var(--line); padding-top: 12px; }
+.today-w .name { font-family: var(--font-display); font-size: 26px; font-weight: 600; line-height: 1.1; }
+.today-w .human { white-space: pre-line; font-variant-numeric: tabular-nums; background: var(--sunk); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
+
+/* stav */
+.scale { display: grid; gap: 6px; }
+.scale .lbl { display: flex; justify-content: space-between; font-size: 14px; }
+.seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.seg button { border: 1px solid var(--line); background: var(--ground); border-radius: 10px; padding: 8px 2px 6px; display: grid; gap: 0; line-height: 1.1; }
+.seg button b { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+.seg button span { font-size: 11px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.seg button[aria-pressed="true"] span { color: rgba(255,255,255,.85); }
+.primary { background: var(--accent); color: #fff; border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 600; }
+.primary:disabled { opacity: .5; }
+.linkbtn { background: none; border: 0; color: var(--accent); padding: 0; font-weight: 500; }
+.msg { font-size: 14px; }
+.msg.ok { color: var(--good); } .msg.err { color: var(--bad); }
+
+/* týden */
+.days { display: grid; gap: 0; }
+.day { display: grid; grid-template-columns: 44px 1fr; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.day:first-child { border-top: 0; }
+.day .dn { font-family: var(--font-display); font-weight: 600; font-size: 17px; line-height: 1.15; }
+.day .dn small { display: block; font-family: var(--font-body); font-weight: 400; font-size: 12px; color: var(--muted); }
+.day.is-today .dn { color: var(--accent); }
+.day .items { display: grid; gap: 4px; min-width: 0; }
+.it { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.it .t { font-weight: 500; }
+.chip { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--sunk); color: var(--muted); white-space: nowrap; }
+.chip.ok { background: var(--good-soft); color: var(--good); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip.bad { background: var(--bad-soft); color: var(--bad); }
+.chip.info { background: var(--accent-soft); color: var(--accent); }
+
+/* grafy */
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+.axis { fill: var(--muted); font: 500 11px var(--font-body); font-variant-numeric: tabular-nums; }
+.grid { stroke: var(--line); stroke-width: 1; }
+.bar { fill: var(--accent); opacity: .85; }
+.bar.cur { opacity: 1; fill: var(--accent); }
+.bar.target { fill: none; stroke: var(--muted); stroke-dasharray: 3 3; }
+.efline { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.efarea { fill: var(--accent-soft); }
+.efdot { fill: var(--accent); }
+.z-low { fill: var(--z-low); } .z-mid { fill: var(--z-mid); } .z-high { fill: var(--z-high); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.big { font-family: var(--font-display); font-size: 30px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 4px 8px 4px 0; }
+td { padding: 5px 8px 5px 0; border-top: 1px solid var(--line); }
+
+/* nastavení */
+.field { display: grid; gap: 4px; }
+.field input { border: 1px solid var(--line); background: var(--ground); border-radius: 10px; padding: 10px 12px; width: 100%; }
+.note { font-size: 13px; color: var(--muted); }
+.stale { background: var(--warn-soft); color: var(--ink); border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+footer { text-align: center; font-size: 12px; color: var(--muted); padding-top: 6px; }
+@media (prefers-reduced-motion: no-preference) {
+  .card, .ready { animation: in .25s ease-out both; }
+  @keyframes in { from { transform: translateY(4px); } to { transform: none; } }
+}
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div>
+      <h1>Trenér</h1>
+      <div class="sub" id="sub">Půlmaraton ČB 29. 5. 2027</div>
+    </div>
+    <div class="tools">
+      <button class="iconbtn" id="refresh" type="button" aria-label="Načíst znovu">Načíst</button>
+      <button class="iconbtn" id="gear" type="button" aria-label="Nastavení">Nastavení</button>
+    </div>
+  </header>
+
+  <section class="card" id="setup" hidden>
+    <h2>Připojení k intervals.icu</h2>
+    <p class="small" style="margin:0">Klíč zůstane jen v tomto telefonu. Najdeš ho v intervals.icu v Settings, sekce Developer Settings.</p>
+    <form id="setupForm" class="card" style="padding:0;border:0" novalidate>
+      <div class="field"><label for="athlete">Athlete ID</label><input id="athlete" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="i123456"></div>
+      <div class="field"><label for="apikey">API klíč</label><input id="apikey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <button class="primary" type="submit" id="setupSave">Uložit a načíst</button>
+      <div class="msg" id="setupMsg" role="status"></div>
+      <button class="linkbtn" type="button" id="forget" hidden>Odebrat klíč z telefonu</button>
+    </form>
+  </section>
+
+  <div id="app" class="stack" hidden>
+      <div class="stale" id="stale" hidden></div>
+      <section class="ready" id="ready" aria-live="polite"></section>
+      <section class="card" id="today"></section>
+      <section class="card" id="stav">
+        <div class="row"><h2>Stav před tréninkem</h2><span class="note" id="stavWhen"></span></div>
+        <div id="scales"></div>
+        <button class="linkbtn" type="button" id="more" aria-expanded="false">Přidat stres, náladu a motivaci</button>
+        <div id="moreScales" hidden></div>
+        <button class="primary" type="button" id="saveStav" disabled>Uložit stav</button>
+        <div class="msg" id="stavMsg" role="status"></div>
+      </section>
+      <section class="card" id="week"></section>
+      <section class="card" id="volume"></section>
+      <section class="card" id="aero"></section>
+      <section class="card" id="intensity"></section>
+      <section class="card" id="form"></section>
+      <footer id="foot"></footer>
+  </div>
+</main>
+
+<script>
+"use strict";
+const API = "https://intervals.icu/api/v1/athlete/";
+const NOTE_DATE = "2020-01-06", NOTE_ID = "coach-dashboard";
+const DAYS = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
+const STATUS = { GREEN: "Zelená", AMBER: "Oranžová", RED: "Červená" };
+const ALLOWED = { as_planned: "Trénink podle plánu", no_quality: "Dnes bez kvalitního tréninku", rest_or_recovery: "Volno nebo regenerace do 45 min" };
+const SCALES = [
+  { k: "fatigue", l: "Únava", o: ["nízká", "běžná", "vysoká", "extrém"] },
+  { k: "soreness", l: "Svaly", o: ["nízká", "běžná", "vysoká", "extrém"] },
+  { k: "injury", l: "Bolest", o: ["nic", "drobnost", "bolí", "zraněný"] },
+];
+const MORE = [
+  { k: "stress", l: "Stres", o: ["nízký", "běžný", "vysoký", "extrém"] },
+  { k: "mood", l: "Nálada", o: ["výborná", "dobrá", "ujde", "špatná"] },
+  { k: "motivation", l: "Motivace", o: ["velká", "vysoká", "průměr", "nízká"] },
+];
+const $ = (id) => document.getElementById(id);
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v; else if (k === "text") n.textContent = v; else n.setAttribute(k, v);
+  }
+  for (const c of kids) if (c != null) n.append(c);
+  return n;
+};
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const parseDay = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const dm = (s) => { const d = parseDay(s); return `${d.getDate()}. ${d.getMonth() + 1}.`; };
+const dow = (s) => DAYS[(parseDay(s).getDay() + 6) % 7];
+const fmt = (v, dec = 0) => v == null ? "–" : Number(v).toLocaleString("cs-CZ", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
+let cfg = { athlete: store.get("athlete") || "", key: store.get("apikey") || "" };
+let data = null;
+let stav = {};
+let stavLoaded = {};
+
+async function api(path, opts = {}) {
+  const r = await fetch(API + encodeURIComponent(cfg.athlete) + path, {
+    ...opts,
+    headers: { Authorization: "Basic " + btoa("API_KEY:" + cfg.key), "Content-Type": "application/json", ...(opts.headers || {}) },
+  });
+  if (r.status === 401 || r.status === 403) throw new Error("intervals.icu odmítl klíč. Zkontroluj Athlete ID a API klíč v Nastavení.");
+  if (!r.ok) throw new Error(`intervals.icu vrátil chybu ${r.status}.`);
+  const t = await r.text();
+  return t ? JSON.parse(t) : null;
+}
+
+async function loadDashboard() {
+  const evs = await api(`/events?oldest=${NOTE_DATE}&newest=${NOTE_DATE}`);
+  const ev = (evs || []).find((e) => e.external_id === NOTE_ID);
+  if (!ev) throw new Error("Souhrn od trenéra zatím v intervals.icu není. Objeví se po nejbližším běhu rutiny.");
+  return JSON.parse(ev.description);
+}
+
+async function loadWellness(day) {
+  try { return (await api(`/wellness/${day}`)) || {}; } catch { return {}; }
+}
+
+/* ---------- vykreslení ---------- */
+function renderReady(d) {
+  const r = d.readiness || {};
+  const m = r.metrics || {};
+  const box = $("ready");
+  box.dataset.s = r.status || "GREEN";
+  box.replaceChildren();
+  box.append(
+    el("div", { class: "row" },
+      el("div", { class: "status", text: STATUS[r.status] || "–" }),
+      el("div", { class: "small muted", text: `připravenost ${dm(d.today)}` })),
+    el("div", { class: "allowed", text: ALLOWED[r.allowed] || "" }));
+  const reasons = [...(r.flag_text || [])];
+  if (reasons.length) box.append(el("ul", {}, ...reasons.map((t) => el("li", { text: t }))));
+  const sleep = (m.sleep_h || [])[0];
+  box.append(el("div", { class: "metrics" },
+    metric(m.hrv_7d != null ? fmt(m.hrv_7d) : "–", m.hrv_normal ? `HRV 7 dní, normál ${fmt(m.hrv_normal[0])}–${fmt(m.hrv_normal[1])}` : "HRV 7 dní (sbírá se základ)"),
+    metric(m.rhr_3d != null ? fmt(m.rhr_3d) : "–", m.rhr_baseline != null ? `klidový tep, běžně ${fmt(m.rhr_baseline)}` : "klidový tep"),
+    metric(sleep != null ? fmt(sleep, 1) + " h" : "–", "spánek poslední noc")));
+  const notes = (r.notes || []).filter((n) => !/Subjektivní stav/.test(n));
+  if (notes.length) box.append(el("div", { class: "note", text: notes.join(" ") }));
+}
+function metric(v, l) { return el("div", { class: "metric" }, el("span", { class: "v", text: v }), el("span", { class: "l", text: l })); }
+
+function kindLabel(k) {
+  return { easy: "lehký", recovery: "regenerace", long: "dlouhý", quality: "kvalita", test: "test", race: "závod", strength: "posilovna", bike_easy: "kolo", bike_quality: "kolo kvalita" }[k] || k || "";
+}
+
+function renderToday(d) {
+  const box = $("today");
+  const today = iso(new Date());
+  const ws = (d.plan || []).concat(d.next_plan || []).filter((w) => w.date === today);
+  box.replaceChildren(el("div", { class: "row" }, el("h2", { text: "Dnes" }), el("span", { class: "note", text: `${dow(today)} ${dm(today)}` })));
+  if (!ws.length) {
+    box.append(el("div", { class: "today-w" }, el("div", { class: "name", text: "Volno" }), el("div", { class: "muted small", text: "Na dnešek trenér nic nenaplánoval." })));
+    return;
+  }
+  for (const w of ws) {
+    const meta = [w.time, w.minutes ? `~${w.minutes} min` : null, w.km ? `~${fmt(w.km, 1)} km` : null, kindLabel(w.kind)].filter(Boolean).join(" · ");
+    box.append(el("div", { class: "today-w" },
+      el("div", { class: "name", text: w.name }),
+      el("div", { class: "small muted", text: meta }),
+      w.human ? el("div", { class: "human", text: w.human }) : null,
+      w.purpose ? el("div", { class: "small", text: w.purpose }) : null));
+  }
+}
+
+function statusChip(s) {
+  const map = { hotovo: "ok", zkráceno: "warn", prodlouženo: "warn", vynecháno: "bad" };
+  return el("span", { class: "chip " + (map[s] || ""), text: s });
+}
+
+function renderWeek(d) {
+  const box = $("week");
+  const plan = d.plan || [];
+  const start = plan.length ? mondayOf(plan[0].date) : mondayOf(d.today);
+  const today = iso(new Date());
+  const comp = {};
+  for (const key of ["this_week", "last_week"]) for (const i of ((d.compliance || {})[key] || {}).items || []) (comp[i.date] ||= []).push(i);
+  const extras = {};
+  for (const key of ["this_week"]) for (const x of ((d.compliance || {})[key] || {}).extra || []) (extras[x.date] ||= []).push(x);
+  const done = d.week_done || {};
+  box.replaceChildren(el("div", { class: "row" }, el("h2", { text: "Tento týden" }),
+    el("span", { class: "note", text: `${fmt(done.run_km, 1)} km odběhnuto` + (d.phase && d.phase.target_run_km ? ` z cíle ${fmt(d.phase.target_run_km)} km` : "") })));
+  const list = el("div", { class: "days" });
+  for (let i = 0; i < 7; i++) {
+    const day = iso(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+    const items = el("div", { class: "items" });
+    const planned = plan.filter((w) => w.date === day);
+    const cs = comp[day] || [];
+    for (const w of planned) {
+      const c = cs.find((x) => x.name === w.name);
+      const it = el("div", { class: "it" }, el("span", { class: "t", text: w.name }));
+      if (c) {
+        it.append(statusChip(c.status));
+        if (c.above_easy_pct != null && c.above_easy_pct > 20) it.append(el("span", { class: "chip warn", text: `${c.above_easy_pct} % nad lehkým tepem` }));
+      } else if (day === today) it.append(el("span", { class: "chip info", text: "dnes" }));
+      else if (w.time) it.append(el("span", { class: "note", text: w.time }));
+      items.append(it);
+    }
+    for (const x of extras[day] || []) items.append(el("div", { class: "it" }, el("span", { class: "muted", text: `${x.type === "padel" ? "Padel" : x.type === "football" ? "Fotbal" : x.name}, ${x.min} min` }), el("span", { class: "chip", text: "navíc" })));
+    if (!items.childNodes.length) items.append(el("span", { class: "muted small", text: "volno" }));
+    list.append(el("div", { class: "day" + (day === today ? " is-today" : "") },
+      el("div", { class: "dn" }, DAYS[i], el("small", { text: dm(day) })), items));
+  }
+  box.append(list);
+  const tw = (d.compliance || {}).this_week;
+  if (tw && tw.planned) box.append(el("div", { class: "note", text: `Splněno ${tw.done} z ${tw.planned} (${tw.pct} %) do včerejška.` }));
+}
+function mondayOf(s) { const d = parseDay(s); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; }
+
+const NS = "http://www.w3.org/2000/svg";
+function svg(w, h) { const s = document.createElementNS(NS, "svg"); s.setAttribute("viewBox", `0 0 ${w} ${h}`); s.setAttribute("role", "img"); return s; }
+function sv(tag, attrs, text) { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); if (text != null) n.textContent = text; return n; }
+
+function renderVolume(d) {
+  const box = $("volume");
+  const entries = Object.entries(d.weekly_run_km || {});
+  const target = d.phase && d.phase.target_run_km;
+  box.replaceChildren(el("div", { class: "row" }, el("h2", { text: "Objem běhu" }), el("span", { class: "note", text: "km po týdnech" })));
+  if (!entries.length) return;
+  const W = 340, H = 150, L = 26, B = 22, T = 10;
+  const max = Math.max(10, target || 0, ...entries.map(([, v]) => v));
+  const top = Math.ceil(max / 10) * 10;
+  const y = (v) => T + (H - T - B) * (1 - v / top);
+  const s = svg(W, H);
+  s.setAttribute("aria-label", "Objem běhu po týdnech v km");
+  for (let v = 0; v <= top; v += top > 30 ? 20 : 10) {
+    s.append(sv("line", { class: "grid", x1: L, x2: W, y1: y(v), y2: y(v) }), sv("text", { class: "axis", x: L - 6, y: y(v) + 4, "text-anchor": "end" }, v));
+  }
+  const bw = (W - L) / entries.length;
+  entries.forEach(([wk, v], i) => {
+    const x = L + i * bw + bw * 0.18, w = bw * 0.64;
+    const cur = i === entries.length - 1;
+    s.append(sv("rect", { class: "bar" + (cur ? " cur" : ""), x, y: y(v), width: w, height: Math.max(0, y(0) - y(v)), rx: 3 }));
+    if (v > 0) s.append(sv("text", { class: "axis", x: x + w / 2, y: y(v) - 4, "text-anchor": "middle" }, fmt(v)));
+    s.append(sv("text", { class: "axis", x: x + w / 2, y: H - 6, "text-anchor": "middle" }, dm(wk).replace(/\.$/, "")));
+  });
+  if (target) {
+    s.append(sv("line", { x1: L, x2: W, y1: y(target), y2: y(target), stroke: "currentColor", "stroke-dasharray": "4 4", class: "axis", "stroke-width": 1.2 }));
+    s.append(sv("text", { class: "axis", x: W, y: y(target) - 5, "text-anchor": "end" }, `cíl fáze ${fmt(target)} km`));
+  }
+  box.append(s);
+}
+
+function renderAero(d) {
+  const box = $("aero");
+  const a = d.aerobic || {};
+  const tr = a.trend || {};
+  box.replaceChildren(el("div", { class: "row" }, el("h2", { text: "Aerobní báze" }), el("span", { class: "note", text: "EF = rychlost na tep, vyšší je lepší" })));
+  const head = el("div", { class: "row" });
+  if (tr.change_pct != null) {
+    head.append(el("div", {}, el("div", { class: "big", text: (tr.change_pct > 0 ? "+" : "") + fmt(tr.change_pct, 1) + " %" }),
+      el("div", { class: "note", text: `EF za ${tr.days} dní ${fmt(tr.recent_ef, 3)} proti ${fmt(tr.prev_ef, 3)}` })));
+  } else {
+    head.append(el("div", { class: "small muted", text: `Trend zatím nejde spočítat: lehkých běhů za ${tr.days || 28} dní ${tr.recent_runs ?? 0}, předtím ${tr.prev_runs ?? 0}. Stačí 2 v každém období.` }));
+  }
+  if (tr.recent_decoupling != null) head.append(el("div", {}, el("div", { class: "big", text: fmt(tr.recent_decoupling, 1) + " %" }), el("div", { class: "note", text: "decoupling, pod 5 % je dobře" })));
+  box.append(head);
+  const pts = Object.entries(a.weekly || {}).map(([k, v]) => [k, v.ef]).filter(([, v]) => v != null);
+  if (pts.length >= 2) {
+    const W = 340, H = 110, L = 34, T = 10, B = 20;
+    const vals = pts.map(([, v]) => v);
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const pad = Math.max((hi - lo) * 0.25, 0.02); lo -= pad; hi += pad;
+    const keys = Object.keys(a.weekly);
+    const x = (k) => L + (W - L) * (keys.indexOf(k) / Math.max(1, keys.length - 1));
+    const y = (v) => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+    const s = svg(W, H);
+    s.setAttribute("aria-label", "EF po týdnech");
+    for (const v of [lo + pad, hi - pad]) s.append(sv("line", { class: "grid", x1: L, x2: W, y1: y(v), y2: y(v) }), sv("text", { class: "axis", x: L - 6, y: y(v) + 4, "text-anchor": "end" }, fmt(v, 2)));
+    const line = pts.map(([k, v]) => `${x(k)},${y(v)}`).join(" ");
+    s.append(sv("polygon", { class: "efarea", points: `${x(pts[0][0])},${y(lo)} ${line} ${x(pts[pts.length - 1][0])},${y(lo)}` }));
+    s.append(sv("polyline", { class: "efline", points: line }));
+    const [lk, lv] = pts[pts.length - 1];
+    s.append(sv("circle", { class: "efdot", cx: x(lk), cy: y(lv), r: 4 }));
+    s.append(sv("text", { class: "axis", x: L, y: H - 4 }, dm(keys[0])), sv("text", { class: "axis", x: W, y: H - 4, "text-anchor": "end" }, dm(keys[keys.length - 1])));
+    box.append(s);
+  }
+  const tests = (a.tests || []).filter((t) => t.pace);
+  if (tests.length) {
+    const t = el("table", {}, el("thead", {}, el("tr", {}, ...["Aerobní test", "tempo", "tep", "decoupling"].map((h) => el("th", { text: h })))));
+    const tb = el("tbody");
+    for (const r of tests.slice(-4)) tb.append(el("tr", {}, el("td", { text: dm(r.date) }), el("td", { text: r.pace + "/km" }), el("td", { text: fmt(r.avg_hr) }), el("td", { text: r.decoupling != null ? fmt(r.decoupling, 1) + " %" : "–" })));
+    t.append(tb);
+    box.append(el("div", { class: "tbl" }, t));
+  }
+}
+
+function renderIntensity(d) {
+  const box = $("intensity");
+  const rows = Object.entries(d.intensity || {});
+  box.replaceChildren(el("div", { class: "row" }, el("h2", { text: "Intenzita běhu" }), el("span", { class: "note", text: "cíl kolem 80 % nízké" })));
+  const W = 340, rh = 26, L = 44;
+  const s = svg(W, rows.length * rh + 4);
+  s.setAttribute("aria-label", "Rozložení intenzity po týdnech");
+  rows.forEach(([wk, v], i) => {
+    const y0 = i * rh + 4;
+    s.append(sv("text", { class: "axis", x: 0, y: y0 + 14 }, dm(wk)));
+    if (!v.hours) { s.append(sv("text", { class: "axis", x: L, y: y0 + 14 }, "bez běhu")); return; }
+    let x = L;
+    const span = W - L - 44;
+    for (const [k, cls] of [["low", "z-low"], ["mid", "z-mid"], ["high", "z-high"]]) {
+      const w = span * (v[k] || 0) / 100;
+      if (w > 0) s.append(sv("rect", { class: cls, x, y: y0 + 3, width: w, height: 16, rx: 2 }));
+      x += w;
+    }
+    s.append(sv("text", { class: "axis", x: W, y: y0 + 14, "text-anchor": "end" }, `${fmt(v.hours, 1)} h`));
+  });
+  box.append(s, el("div", { class: "legend" },
+    el("span", {}, el("i", { class: "", style: "background:var(--z-low)" }), "nízká do 89 % LTHR"),
+    el("span", {}, el("i", { style: "background:var(--z-mid)" }), "střední 90–94 %"),
+    el("span", {}, el("i", { style: "background:var(--z-high)" }), "vysoká od 95 %")));
+}
+
+function renderForm(d) {
+  const f = d.fitness || {};
+  const box = $("form");
+  box.replaceChildren(el("div", { class: "row" }, el("h2", { text: "Forma" }), el("span", { class: "note", text: f.date ? `intervals.icu, ${dm(f.date)}` : "" })),
+    el("div", { class: "metrics" },
+      metric(fmt(f.ctl, 1), "kondice (CTL)"), metric(fmt(f.atl, 1), "únava (ATL)"), metric((f.tsb > 0 ? "+" : "") + fmt(f.tsb, 1), "forma (TSB)")));
+  const osd = d.other_sports_done || [];
+  if (osd.length) box.append(el("div", { class: "note", text: "Padel a fotbal z hodinek: " + osd.map((e) => `${dm(e.date)} ${e.type === "padel" ? "padel" : "fotbal"}${e.load ? ` (load ${e.load})` : ""}`).join(", ") }));
+}
+
+function renderHeader(d) {
+  const r = d.race || {};
+  const parts = [];
+  if (d.phase && d.phase.name) parts.push(`${d.phase.name}, týden ${d.phase.week_index}${d.phase.recovery ? ", odlehčený" : ""}`);
+  if (r.weeks != null) parts.push(`závod za ${fmt(r.weeks, 0)} týdnů, cíl ${d.target_time}`);
+  $("sub").textContent = parts.join(" · ") || "Trenér";
+  const gen = new Date(d.generated_at);
+  $("foot").textContent = `Data od trenéra: ${gen.toLocaleString("cs-CZ", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}. Přepočítávají se při ranním běhu rutiny.`;
+  const stale = $("stale");
+  const today = iso(new Date());
+  if (d.today !== today) {
+    stale.textContent = `Souhrn je z ${dm(d.today)}. Dnešní připravenost trenér spočítá v 8:30.`;
+    stale.hidden = false;
+  } else stale.hidden = true;
+}
+
+/* ---------- stav ---------- */
+function buildScales(host, list) {
+  host.replaceChildren();
+  for (const sc of list) {
+    const seg = el("div", { class: "seg", role: "group", "aria-label": sc.l });
+    sc.o.forEach((lab, i) => {
+      const b = el("button", { type: "button", id: `s-${sc.k}-${i + 1}`, "aria-pressed": String(stav[sc.k] === i + 1) }, el("b", { text: String(i + 1) }), el("span", { text: lab }));
+      b.addEventListener("click", () => {
+        stav[sc.k] = stav[sc.k] === i + 1 ? undefined : i + 1;
+        for (let j = 1; j <= 4; j++) $(`s-${sc.k}-${j}`).setAttribute("aria-pressed", String(stav[sc.k] === j));
+        updateSaveState();
+      });
+      seg.append(b);
+    });
+    host.append(el("div", { class: "scale" }, el("div", { class: "lbl" }, el("span", { text: sc.l }), el("span", { class: "muted", text: "1 = nejlepší" })), seg));
+  }
+}
+function updateSaveState() {
+  const changed = [...SCALES, ...MORE].some((s) => stav[s.k] !== stavLoaded[s.k]);
+  $("saveStav").disabled = !changed;
+  $("stavMsg").textContent = "";
+}
+async function saveStav() {
+  const day = iso(new Date());
+  const body = { id: day };
+  for (const s of [...SCALES, ...MORE]) if (stav[s.k] !== stavLoaded[s.k]) body[s.k] = stav[s.k] ?? null;
+  $("saveStav").disabled = true;
+  $("stavMsg").className = "msg";
+  $("stavMsg").textContent = "Ukládám…";
+  try {
+    await api(`/wellness/${day}`, { method: "PUT", body: JSON.stringify(body) });
+    stavLoaded = { ...stav };
+    $("stavMsg").className = "msg ok";
+    const h = new Date().getHours() * 60 + new Date().getMinutes();
+    $("stavMsg").textContent = h < 8 * 60 + 30
+      ? "Uloženo. Trenér s ním počítá v 8:30."
+      : "Uloženo do intervals.icu. Dnešní plán už je rozhodnutý, stav se projeví zítra ráno. Když tě něco bolí, dnes vynech intenzitu.";
+    $("stavWhen").textContent = `zadáno ${dm(day)}`;
+  } catch (e) {
+    $("stavMsg").className = "msg err";
+    $("stavMsg").textContent = e.message;
+    updateSaveState();
+  }
+}
+
+/* ---------- start ---------- */
+async function load() {
+  $("setup").hidden = true;
+  $("refresh").disabled = true;
+  try {
+    const today = iso(new Date());
+    const [d, w] = await Promise.all([loadDashboard(), loadWellness(today)]);
+    data = d;
+    stav = {}; for (const s of [...SCALES, ...MORE]) if (w[s.k]) stav[s.k] = w[s.k];
+    stavLoaded = { ...stav };
+    $("stavWhen").textContent = Object.keys(stav).length ? `zadáno ${dm(today)}` : "dnes zatím nezadáno";
+    buildScales($("scales"), SCALES);
+    buildScales($("moreScales"), MORE);
+    if (MORE.some((s) => stav[s.k])) { $("moreScales").hidden = false; $("more").hidden = true; }
+    updateSaveState();
+    renderHeader(d); renderReady(d); renderToday(d); renderWeek(d); renderVolume(d); renderAero(d); renderIntensity(d); renderForm(d);
+    $("app").hidden = false;
+    try { localStorage.setItem("lastData", JSON.stringify(d)); } catch {}
+  } catch (e) {
+    const cached = store.get("lastData");
+    if (cached && data == null) {
+      try { data = JSON.parse(cached); renderHeader(data); renderReady(data); renderToday(data); renderWeek(data); renderVolume(data); renderAero(data); renderIntensity(data); renderForm(data); $("app").hidden = false; } catch {}
+    }
+    showSetup(e.message);
+  } finally {
+    $("refresh").disabled = false;
+  }
+}
+function showSetup(msg) {
+  $("athlete").value = cfg.athlete; $("apikey").value = cfg.key;
+  $("setupMsg").className = msg ? "msg err" : "msg";
+  $("setupMsg").textContent = msg || "";
+  $("forget").hidden = !cfg.key;
+  $("setup").hidden = false;
+}
+$("setupForm").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  cfg = { athlete: $("athlete").value.trim(), key: $("apikey").value.trim() };
+  if (!/^i?\d+$/.test(cfg.athlete) || !cfg.key) { showSetup("Vyplň Athlete ID (tvar i123456) a API klíč."); return; }
+  store.set("athlete", cfg.athlete); store.set("apikey", cfg.key);
+  load();
+});
+$("forget").addEventListener("click", () => {
+  store.del("apikey"); store.del("athlete"); store.del("lastData");
+  cfg = { athlete: "", key: "" }; data = null; $("app").hidden = true; showSetup("Klíč odebrán z tohoto telefonu.");
+});
+$("gear").addEventListener("click", () => { if ($("setup").hidden) showSetup(""); else $("setup").hidden = true; });
+$("refresh").addEventListener("click", load);
+$("saveStav").addEventListener("click", saveStav);
+$("more").addEventListener("click", () => { $("moreScales").hidden = false; $("more").hidden = true; $("more").setAttribute("aria-expanded", "true"); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && cfg.key && data && data.today !== iso(new Date())) load(); });
+
+if (cfg.key && cfg.athlete) load(); else showSetup("");
+</script>
+</body>
+</html>
