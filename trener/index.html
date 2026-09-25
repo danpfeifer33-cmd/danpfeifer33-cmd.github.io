@@ -205,6 +205,12 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding-top: 
         <button class="primary" type="button" id="saveStav" disabled>Uložit stav</button>
         <div class="msg" id="stavMsg" role="status"></div>
       </section>
+      <section class="card" id="notif">
+        <div class="row"><h2>Upozornění v 7:30</h2><span class="chip" id="notifState">vypnuto</span></div>
+        <p class="small" style="margin:0" id="notifText">Připomene stav, jen když ho ráno ještě nemáš vyplněný.</p>
+        <button class="primary" type="button" id="notifBtn">Zapnout upozornění</button>
+        <div class="msg" id="notifMsg" role="status"></div>
+      </section>
       <section class="card" id="week"></section>
       <section class="card" id="volume"></section>
       <section class="card" id="aero"></section>
@@ -218,6 +224,8 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding-top: 
 "use strict";
 const API = "https://intervals.icu/api/v1/athlete/";
 const NOTE_DATE = "2020-01-06", NOTE_ID = "coach-dashboard";
+const PUSH_DATE = "2020-01-07", PUSH_ID = "coach-push";
+const VAPID_PUBLIC = "BF13QoO-9DBHIGx6_yA0oqAVEvO-LwoGqq_YY2b4GrPjkQFwcYIbugUuIBYCDG5fwXQb5rUQAho2zdb4zwnP9UY";
 const DAYS = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
 const STATUS = { GREEN: "Zelená", AMBER: "Oranžová", RED: "Červená" };
 const ALLOWED = { as_planned: "Trénink podle plánu", no_quality: "Dnes bez kvalitního tréninku", rest_or_recovery: "Volno nebo regenerace do 45 min" };
@@ -544,6 +552,70 @@ async function saveStav() {
   }
 }
 
+/* ---------- upozornění ---------- */
+let swReg = null;
+const standalone = () => window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+const b64ToBytes = (s) => { const b = atob((s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, (c) => c.charCodeAt(0)); };
+
+async function readPushNote() {
+  const evs = await api(`/events?oldest=${PUSH_DATE}&newest=${PUSH_DATE}`);
+  const ev = (evs || []).find((e) => e.external_id === PUSH_ID);
+  try { return ev && ev.description ? JSON.parse(ev.description) : {}; } catch { return {}; }
+}
+async function writePushNote(sub) {
+  const prev = await readPushNote().catch(() => ({}));
+  const body = { ...prev, subscription: sub, updated: new Date().toISOString(), status: sub ? "ok" : "vypnuto" };
+  await api("/events/bulk?upsert=true", { method: "POST", body: JSON.stringify([{
+    category: "NOTE", start_date_local: `${PUSH_DATE}T00:00:00`, name: "Trenér: odběr notifikací (nemazat)",
+    description: JSON.stringify(body), external_id: PUSH_ID }]) });
+}
+function setNotif(on, text) {
+  $("notifState").textContent = on ? "zapnuto" : "vypnuto";
+  $("notifState").className = "chip" + (on ? " ok" : "");
+  $("notifBtn").textContent = on ? "Vypnout upozornění" : "Zapnout upozornění";
+  $("notifBtn").dataset.on = on ? "1" : "";
+  if (text) $("notifText").textContent = text;
+}
+async function initNotif() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    $("notifBtn").hidden = true;
+    setNotif(false, standalone() ? "Tento prohlížeč upozornění nepodporuje (na iPhonu je potřeba iOS 16.4 a novější)."
+      : "Upozornění fungují jen ze stránky otevřené přes ikonu na ploše.");
+    return;
+  }
+  try { swReg = await navigator.serviceWorker.register("sw.js"); } catch { $("notifBtn").hidden = true; setNotif(false, "Upozornění se nepodařilo připravit."); return; }
+  const sub = await swReg.pushManager.getSubscription();
+  let note = {};
+  try { note = await readPushNote(); } catch {}
+  const on = !!(sub && note.subscription && note.subscription.endpoint === sub.endpoint);
+  setNotif(on, on ? "Připomene stav, jen když ho ráno ještě nemáš vyplněný." : (note.status && /zanikl/.test(note.status) ? "Odběr vypršel, zapni upozornění znovu." : null));
+}
+async function toggleNotif() {
+  const btn = $("notifBtn");
+  btn.disabled = true;
+  $("notifMsg").className = "msg"; $("notifMsg").textContent = "";
+  try {
+    if (btn.dataset.on) {
+      const sub = await swReg.pushManager.getSubscription();
+      if (sub) await sub.unsubscribe();
+      await writePushNote(null);
+      setNotif(false);
+      $("notifMsg").className = "msg ok"; $("notifMsg").textContent = "Upozornění vypnuta.";
+    } else {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") throw new Error("Oznámení nejsou povolená. Povol je v Nastavení iPhonu, Oznámení, Trenér.");
+      let sub = await swReg.pushManager.getSubscription();
+      if (!sub) sub = await swReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
+      await writePushNote(sub.toJSON());
+      setNotif(true, "Připomene stav, jen když ho ráno ještě nemáš vyplněný.");
+      $("notifMsg").className = "msg ok"; $("notifMsg").textContent = "Zapnuto. První upozornění přijde zítra kolem 7:30.";
+    }
+  } catch (e) {
+    $("notifMsg").className = "msg err"; $("notifMsg").textContent = e.message || String(e);
+  } finally { btn.disabled = false; }
+}
+$("notifBtn").addEventListener("click", toggleNotif);
+
 /* ---------- start ---------- */
 async function load() {
   $("setup").hidden = true;
@@ -562,6 +634,7 @@ async function load() {
     renderHeader(d); renderReady(d); renderToday(d); renderWeek(d); renderVolume(d); renderAero(d); renderIntensity(d); renderForm(d);
     $("app").hidden = false;
     try { localStorage.setItem("lastData", JSON.stringify(d)); } catch {}
+    initNotif();
   } catch (e) {
     const cached = store.get("lastData");
     if (cached && data == null) {
