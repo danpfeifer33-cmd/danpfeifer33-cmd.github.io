@@ -373,7 +373,7 @@ function renderWeek(d) {
   }
   box.append(list);
   const tw = (d.compliance || {}).this_week;
-  if (tw && tw.planned) box.append(el("div", { class: "note", text: `Splněno ${tw.done} z ${tw.planned} (${tw.pct} %) do včerejška.` }));
+  if (tw && tw.planned) box.append(el("div", { class: "note", text: `Splněno ${tw.done} z ${tw.planned} (${tw.pct} %) do ${dm(tw.end)}` }));
 }
 function mondayOf(s) { const d = parseDay(s); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; }
 
